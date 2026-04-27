@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>BudgetEye — Dashboard</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#6C63FF" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/dashboard.css" />
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-scene">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="grid-lines"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Offline banner -->
+<div id="offlineBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(255,165,2,0.95);color:#000;text-align:center;padding:10px;font-size:0.82rem;font-weight:600;backdrop-filter:blur(10px)">
+  📡 You're offline — BudgetEye is running from cache
+</div>
+
+<!-- Blocked Transfer Overlay -->
+<div class="blocked-overlay" id="blockedOverlay">
+  <div class="blocked-card glass">
+    <div class="blocked-icon">🚫</div>
+    <div class="blocked-title" data-i18n="blockedTitle">Transfer Blocked</div>
+    <div class="blocked-msg" data-i18n="blockedMsg">You've reached your daily budget limit. Transfers are blocked until tomorrow.</div>
+    <button class="btn btn-primary" id="closeBlocked" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<!-- Dashboard Layout -->
+<div class="dashboard">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon" style="width:40px;height:40px;font-size:20px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center">💰</div>
+      <div class="logo-text" style="font-size:1.2rem;font-weight:700;background:linear-gradient(135deg,#fff 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">BudgetEye</div>
+    </div>
+
+    <div class="nav-section-label">Main</div>
+    <button class="nav-item active" data-page="overview">
+      <span class="nav-icon">📊</span>
+      <span data-i18n="dashboard">Dashboard</span>
+    </button>
+    <button class="nav-item" data-page="transactions">
+      <span class="nav-icon">↔️</span>
+      <span data-i18n="transactions">Transactions</span>
+    </button>
+    <button class="nav-item" data-page="accounts">
+      <span class="nav-icon">🏦</span>
+      <span data-i18n="accounts">Accounts</span>
+    </button>
+
+    <div class="nav-section-label">Finance</div>
+    <button class="nav-item" data-page="budget">
+      <span class="nav-icon">🎯</span>
+      <span data-i18n="budget">Budget</span>
+    </button>
+    <button class="nav-item" data-page="notifications">
+      <span class="nav-icon">🔔</span>
+      <span data-i18n="notifications">Notifications</span>
+      <span class="nav-badge" id="notifBadge" style="display:none">0</span>
+    </button>
+
+    <div class="nav-section-label">Account</div>
+    <button class="nav-item" data-page="settings">
+      <span class="nav-icon">⚙️</span>
+      <span data-i18n="settings">Settings</span>
+    </button>
+
+    <div class="sidebar-footer">
+      <div class="user-pill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div>
+          <div class="user-name" id="userName">My Account</div>
+          <div class="user-status">● Verified</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div>
+      <div class="topbar-title" id="pageTitle" data-i18n="dashboard">Dashboard</div>
+      <div class="topbar-date" id="topbarDate"></div>
+    </div>
+    <div class="topbar-spacer"></div>
+
+    <!-- Lang -->
+    <div class="lang-toggle" style="position:static">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="am">አማ</button>
+    </div>
+
+    <button class="icon-btn" id="syncBtn" title="Sync">🔄</button>
+    <button class="icon-btn" id="notifBtn" title="Notifications">
+      🔔
+      <div class="notif-dot" id="notifDot" style="display:none"></div>
+    </button>
+    <button class="icon-btn" id="logoutBtn" title="Logout">🚪</button>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ── OVERVIEW PAGE ── -->
+    <div class="page active" id="page-overview">
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card glass purple">
+          <div class="stat-icon">💳</div>
+          <div class="stat-label" data-i18n="totalBalance">Total Balance</div>
+          <div class="stat-value" id="statBalance">ETB 0.00</div>
+          <div class="stat-trend trend-up">↑ 2.4% this week</div>
+        </div>
+        <div class="stat-card glass red">
+          <div class="stat-icon">📤</div>
+          <div class="stat-label" data-i18n="spent">Spent Today</div>
+          <div class="stat-value" id="statSpent">ETB 0.00</div>
+          <div class="stat-sub" id="statPct">0% of limit</div>
+        </div>
+        <div class="stat-card glass green">
+          <div class="stat-icon">💚</div>
+          <div class="stat-label" data-i18n="remaining">Remaining</div>
+          <div class="stat-value" id="statRemaining">ETB 0.00</div>
+          <div class="stat-sub">Until midnight</div>
+        </div>
+        <div class="stat-card glass gold">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-label" data-i18n="dailyBudget">Daily Limit</div>
+          <div class="stat-value" id="statLimit">ETB 0.00</div>
+          <div class="stat-sub">Set by you</div>
+        </div>
+      </div>
+
+      <!-- Budget Bar -->
+      <div class="budget-bar-card glass">
+        <div class="budget-bar-header">
+          <div class="budget-bar-title" data-i18n="dailyBudget">Daily Budget Limit</div>
+          <div class="budget-bar-amounts">
+            <span id="budgetSpentAmt">0</span> / <span id="budgetLimitAmt">0</span>
+          </div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill progress-safe" id="budgetFill" style="width:0%"></div>
+        </div>
+        <div class="budget-status-msg" id="budgetMsg"></div>
+      </div>
+
+      <!-- Two columns -->
+      <div class="two-col">
+        <!-- Recent Transactions -->
+        <div class="card glass">
+          <div class="card-title">
+            <span class="card-icon">↔️</span>
+            <span data-i18n="recentTx">Recent Transactions</span>
+          </div>
+          <div class="tx-list" id="txList"></div>
+          <button class="btn btn-outline" style="margin-top:14px;padding:10px;font-size:0.82rem" onclick="navigateTo('transactions')">View All →</button>
+        </div>
+
+        <!-- Right column -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+
+          <!-- Health Score -->
+          <div class="card glass">
+            <div class="card-title">
+              <span class="card-icon">❤️</span>
+              <span data-i18n="healthScore">Financial Health</span>
+            </div>
+            <div class="health-ring-wrap">
+              <div class="health-ring">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle class="health-ring-bg" cx="60" cy="60" r="50"/>
+                  <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="50"
+                    stroke-dasharray="314" stroke-dashoffset="314"/>
+                </svg>
+                <div class="health-score-text">
+                  <div class="health-score-num" id="healthScoreNum">--</div>
+                  <div class="health-score-label">/ 100</div>
+                </div>
+              </div>
+              <div class="health-verdict" id="healthVerdict">--</div>
+              <div class="health-tips" id="healthTips"></div>
+            </div>
+          </div>
+
+          <!-- Connected Banks -->
+          <div class="card glass">
+            <div class="card-title">
+              <span class="card-icon">🏦</span>
+              <span data-i18n="connectedBanks">Connected Banks</span>
+            </div>
+            <div class="bank-card-list" id="bankList"></div>
+            <button class="btn btn-outline" id="addBankBtn" style="margin-top:14px;padding:10px;font-size:0.82rem" data-i18n="addBank">+ Add Bank</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Weekly Chart -->
+      <div class="card glass" style="margin-bottom:28px">
+        <div class="card-title">
+          <span class="card-icon">📈</span>
+          <span data-i18n="weeklySpend">Weekly Spending</span>
+        </div>
+        <div class="chart-wrap" id="chartBars"></div>
+        <div class="chart-labels" id="chartLabels"></div>
+      </div>
+
+    </div><!-- /overview -->
+
+    <!-- ── TRANSACTIONS PAGE ── -->
+    <div class="page" id="page-transactions">
+      <div class="card glass">
+        <div class="card-title">
+          <span class="card-icon">↔️</span>
+          <span data-i18n="transactions">Transactions</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <input type="text" class="form-input" placeholder="Search transactions..." style="flex:1;min-width:180px" oninput="filterTx(this.value)" />
+          <select class="form-input" style="width:140px" onchange="filterTxType(this.value)">
+            <option value="all">All</option>
+            <option value="debit">Debit</option>
+            <option value="credit">Credit</option>
+          </select>
+        </div>
+        <div class="tx-list" id="txListFull"></div>
+      </div>
+    </div>
+
+    <!-- ── ACCOUNTS PAGE ── -->
+    <div class="page" id="page-accounts">
+      <div class="card glass" style="margin-bottom:20px">
+        <div class="card-title">
+          <span class="card-icon">🏦</span>
+          <span data-i18n="connectedBanks">Connected Banks</span>
+        </div>
+        <div class="bank-card-list" id="bankListFull"></div>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="showAddBankModal()">
+          <span data-i18n="addBank">+ Add Bank</span>
+        </button>
+      </div>
+
+      <!-- Add Bank Modal inline -->
+      <div class="card glass" id="addBankSection" style="display:none">
+        <div class="card-title">🔗 Connect New Bank</div>
+        <div class="bank-grid" id="addBankGrid">
+          <!-- populated by JS -->
+        </div>
+        <button class="btn btn-primary" onclick="addNewBank()">Connect</button>
+        <button class="btn btn-outline" style="margin-top:10px" onclick="document.getElementById('addBankSection').style.display='none'">Cancel</button>
+      </div>
+    </div>
+
+    <!-- ── BUDGET PAGE ── -->
+    <div class="page" id="page-budget">
+      <div class="two-col">
+        <div class="card glass">
+          <div class="card-title">
+            <span class="card-icon">🎯</span>
+            <span data-i18n="setLimit">Set Daily Limit</span>
+          </div>
+          <form class="limit-form" id="limitForm">
+            <div>
+              <label class="form-label" data-i18n="dailyBudget">Daily Budget Limit</label>
+              <div class="limit-input-wrap">
+                <span class="limit-currency">ETB</span>
+                <input type="number" class="limit-input" id="limitInput" placeholder="1000" min="1" step="50" />
+                <button type="submit" class="limit-set-btn" data-i18n="setLimit">Set Limit</button>
+              </div>
+            </div>
+          </form>
+
+          <div style="margin-top:24px">
+            <div class="budget-bar-header">
+              <div class="budget-bar-title">Today's Usage</div>
+            </div>
+            <div class="progress-bar-wrap" style="margin-top:10px">
+              <div class="progress-bar-fill progress-safe" id="budgetFill2" style="width:0%"></div>
+            </div>
+            <div class="budget-status-msg" id="budgetMsg2" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-title">
+            <span class="card-icon">📋</span>
+            Budget Tips
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="notif-item info">
+              <div class="notif-icon">💡</div>
+              <div class="notif-text">Set your daily limit to 70% of your average daily income for healthy savings.</div>
+            </div>
+            <div class="notif-item success">
+              <div class="notif-icon">✅</div>
+              <div class="notif-text">Track every transaction — even small ones add up quickly.</div>
+            </div>
+            <div class="notif-item warning">
+              <div class="notif-icon">⚠️</div>
+              <div class="notif-text">When you hit 80% of your limit, consider postponing non-urgent payments.</div>
+            </div>
+            <div class="notif-item danger">
+              <div class="notif-icon">🚨</div>
+              <div class="notif-text">At 100%, all transfers are blocked until the next day to protect your budget.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS PAGE ── -->
+    <div class="page" id="page-notifications">
+      <div class="card glass">
+        <div class="card-title" style="justify-content:space-between">
+          <span><span class="card-icon">🔔</span> <span data-i18n="notifications">Notifications</span></span>
+          <button class="btn btn-outline" style="width:auto;padding:6px 14px;font-size:0.78rem" onclick="NotifStore.markAllRead();renderNotifications()">Mark all read</button>
+        </div>
+        <div class="notif-list" id="notifList"></div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS PAGE ── -->
+    <div class="page" id="page-settings">
+      <div class="two-col">
+        <div class="card glass">
+          <div class="card-title">⚙️ Preferences</div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Language</label>
+              <div class="lang-toggle" style="position:static;width:fit-content">
+                <button class="lang-btn" data-lang="en">English</button>
+                <button class="lang-btn" data-lang="am">አማርኛ</button>
+              </div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Currency Display</label>
+              <select class="form-input">
+                <option>ETB — Ethiopian Birr</option>
+                <option>USD — US Dollar</option>
+                <option>EUR — Euro</option>
+                <option>GBP — British Pound</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Notifications</label>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label style="display:flex;align-items:center;gap:10px;font-size:0.85rem;cursor:pointer">
+                  <input type="checkbox" checked style="accent-color:var(--primary)"> Budget limit alerts
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:0.85rem;cursor:pointer">
+                  <input type="checkbox" checked style="accent-color:var(--primary)"> Daily summary
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:0.85rem;cursor:pointer">
+                  <input type="checkbox" checked style="accent-color:var(--primary)"> Transaction alerts
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-title">🔐 Security</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="notif-item success">
+              <div class="notif-icon">✅</div>
+              <div class="notif-text">Email verified — <span id="securityEmail" style="color:var(--accent)"></span></div>
+            </div>
+            <div class="notif-item success">
+              <div class="notif-icon">✅</div>
+              <div class="notif-text">Face ID verified</div>
+            </div>
+            <div class="notif-item success">
+              <div class="notif-icon">✅</div>
+              <div class="notif-text">National ID verified</div>
+            </div>
+            <button class="btn btn-outline" style="padding:12px;font-size:0.85rem" onclick="showToast('Re-verification started','info')">
+              🔄 Re-verify Identity
+            </button>
+            <button class="btn btn-outline" style="padding:12px;font-size:0.85rem;border-color:var(--danger);color:var(--danger)" onclick="localStorage.removeItem('auth');localStorage.removeItem('authToken');window.location.href='index.html'">
+              🚪 Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main><!-- /main-content -->
+</div><!-- /dashboard -->
+
+<script src="js/banks.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/dashboard.js"></script>
+<script>
+// ── Extra dashboard helpers ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Date
+  const dateEl = document.getElementById('topbarDate');
+  if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Sync budget fill on budget page
+  function syncBudgetPage() {
+    const pct = DState.dailyLimit ? Math.min(100, (DState.todaySpent / DState.dailyLimit) * 100) : 0;
+    const fill2 = document.getElementById('budgetFill2');
+    const msg2  = document.getElementById('budgetMsg2');
+    if (fill2) {
+      fill2.style.width = pct + '%';
+      fill2.className = 'progress-bar-fill ' + (pct >= 100 ? 'progress-danger' : pct >= 80 ? 'progress-warning' : 'progress-safe');
+    }
+    if (msg2) {
+      if (pct >= 100) { msg2.textContent = DState.t.dangerCondition; msg2.style.color = 'var(--danger)'; }
+      else if (pct >= 80) { msg2.textContent = DState.t.warningCondition; msg2.style.color = 'var(--warning)'; }
+      else { msg2.textContent = DState.t.goodCondition; msg2.style.color = 'var(--success)'; }
+    }
+  }
+  document.querySelectorAll('.nav-item[data-page]').forEach(n => {
+    n.addEventListener('click', () => { if (n.dataset.page === 'budget') setTimeout(syncBudgetPage, 50); });
+  });
+
+  // Add bank modal
+  window.showAddBankModal = function() {
+    const section = document.getElementById('addBankSection');
+    const grid = document.getElementById('addBankGrid');
+    if (!section || !grid) return;
+    grid.innerHTML = BANKS.map(b => `
+      <div class="bank-item" data-bank="${b.id}">
+        <span class="bank-emoji">${b.emoji}</span>${b.name.split(' ')[0]}
+      </div>
+    `).join('');
+    grid.querySelectorAll('.bank-item').forEach(item => {
+      item.addEventListener('click', () => {
+        grid.querySelectorAll('.bank-item').forEach(b => b.classList.remove('selected'));
+        item.classList.add('selected');
+      });
+    });
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  window.addNewBank = function() {
+    const selected = document.querySelector('#addBankGrid .bank-item.selected');
+    if (!selected) { showToast('Select a bank first', 'error'); return; }
+    const bank = BANKS.find(b => b.id === selected.dataset.bank);
+    if (!bank) return;
+    DState.connectedBanks.push({ ...bank, balance: Math.floor(Math.random() * 10000) + 500, account: `****${Math.floor(1000+Math.random()*9000)}` });
+    localStorage.setItem('connectedBanks', JSON.stringify(DState.connectedBanks));
+    showToast(DState.t.bankConnected, 'success');
+    document.getElementById('addBankSection').style.display = 'none';
+    renderBanks();
+  };
+
+  // Transaction filter
+  window.filterTx = function(query) {
+    const container = document.getElementById('txListFull');
+    if (!container) return;
+    const filtered = DState.transactions.filter(tx =>
+      tx.description.toLowerCase().includes(query.toLowerCase()) ||
+      tx.bank.toLowerCase().includes(query.toLowerCase())
+    );
+    container.innerHTML = filtered.map(tx => `
+      <div class="tx-item">
+        <div class="tx-icon" style="background:${tx.category.color}22">${tx.category.emoji}</div>
+        <div class="tx-info">
+          <div class="tx-name">${tx.description}</div>
+          <div class="tx-date">${tx.bank} · ${fmtDate(tx.date)}</div>
+        </div>
+        <div class="tx-amount ${tx.type}">${tx.type === 'debit' ? '-' : '+'}${fmt(tx.amount)}</div>
+      </div>
+    `).join('');
+  };
+
+  window.filterTxType = function(type) {
+    const container = document.getElementById('txListFull');
+    if (!container) return;
+    const filtered = type === 'all' ? DState.transactions : DState.transactions.filter(tx => tx.type === type);
+    container.innerHTML = filtered.map(tx => `
+      <div class="tx-item">
+        <div class="tx-icon" style="background:${tx.category.color}22">${tx.category.emoji}</div>
+        <div class="tx-info">
+          <div class="tx-name">${tx.description}</div>
+          <div class="tx-date">${tx.bank} · ${fmtDate(tx.date)}</div>
+        </div>
+        <div class="tx-amount ${tx.type}">${tx.type === 'debit' ? '-' : '+'}${fmt(tx.amount)}</div>
+      </div>
+    `).join('');
+  };
+});
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
